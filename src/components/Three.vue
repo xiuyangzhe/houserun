@@ -1,7 +1,6 @@
 <template>
     <div>Three</div>
 </template>
-
 <script lang="ts">
     import Run from '../three/Run';
 
@@ -10,7 +9,7 @@
     };
 
     const ShowRun = new Run();
-
+    ShowRun.LoadModel('../models/Running.json');
 </script>
 
 <style scoped>
