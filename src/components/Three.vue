@@ -1,17 +1,18 @@
 <template>
-    <div>Three</div>
+    <div id="container">Three</div>
 </template>
 <script lang="ts">
-    import Run from '../three/Run';
+    import Light from '../three/HemisphereLight';
 
     export default {
         name: 'Three',
+        methods: {},
+        mounted: () => {
+            const container = document.getElementById('container');
+            const hemisphereLight = new Light(container);
+        },
     };
-
-    const ShowRun = new Run();
-    ShowRun.LoadModel('../models/Running.json');
 </script>
 
 <style scoped>
-
 </style>
