@@ -43,22 +43,22 @@ export default class HemisphereLight {
         loader.load(url, (object) => {
             this.model = object;
             object.position.z -= 400;
-            this.mixer = new THREE.AnimationMixer( object );
-            const action = this.mixer.clipAction( object.animations[ 0 ] );
+            this.mixer = new THREE.AnimationMixer(object);
+            const action = this.mixer.clipAction(object.animations[0]);
             action.play();
-            object.traverse(( child ) => {
-                if ( child.isMesh ) {
+            object.traverse((child) => {
+                if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
                 }
-            } );
-            this.scene.add( object );
+            });
+            this.scene.add(object);
         });
     }
 
     private Init(fov: number, aspect: number, near: number, far: number) {
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        this.camera.position.set( 100, 200, 300 );
+        this.camera.position.set(100, 200, 300);
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color().setHSL(0.6, 0, 1);
         this.scene.fog = new THREE.Fog(this.scene.background, 1, 5000);
@@ -121,8 +121,12 @@ export default class HemisphereLight {
         if (this.mixer) {
             this.mixer.update(delta);
         }
-        this.renderer.render( this.scene, this.camera );
+        this.renderer.render(this.scene, this.camera);
         this.stats.update();
+
+        if (this.model != null) {
+            this.model.position.x += 1;
+        }
     }
 
 
