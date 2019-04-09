@@ -10,6 +10,7 @@
         mounted: () => {
             const container = document.getElementById('container');
             const hemisphereLight = new Light(container);
+            hemisphereLight.LoadModel('../models/Samba Dancing.fbx');
         },
     };
 </script>
