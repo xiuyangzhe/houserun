@@ -27,7 +27,6 @@ export default class Run {
     public animate = () => {
         this.cube.rotation.x += 0.01;
         // this.cube.rotation.y += 0.01;
-        // this.cube.position.z += 0.01;
         requestAnimationFrame(this.animate);
         this.renderer.render(this.scene, this.camera);
     }
