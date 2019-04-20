@@ -14,7 +14,7 @@ interface RunModel {
 export enum MoveType {
     X,
     Y,
-    Z
+    Z,
 }
 
 export default class HemisphereLight {
@@ -30,7 +30,7 @@ export default class HemisphereLight {
     private element: any;
     private hemiLight: any;
     private clock: any;
-    private models: RunModel[];
+    private readonly models: RunModel[];
     private modelX: number = 1000;
     private groundY: number = -500;
 
@@ -47,12 +47,10 @@ export default class HemisphereLight {
         // model
         const loader = new FBXLoader();
         loader.load(url, (object) => {
-
-            if (moveType == MoveType.Z) {
+            if (moveType === MoveType.Z) {
                 object.position.z -= 1600;
                 object.position.x = location;
-            }
-            else {
+            } else {
                 object.position.z -= 400 + location;
             }
 
@@ -83,7 +81,8 @@ export default class HemisphereLight {
         // 正投影相机THREE.OrthographicCamera（远近比例相同）和透视投影相机THREE.PerspectiveCamera(远处小近处大)
         // 透视角度越大物体越小
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        //this.camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, near, far )
+        // this.camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2,
+        // window.innerHeight / 2, window.innerHeight / - 2, near, far )
         this.camera.position.set(60, 500, 1000);
 
         this.camera.lookAt({x: 0, y: 0, z: 0});
@@ -142,7 +141,7 @@ export default class HemisphereLight {
         controls.maxDistance = far;
 
         // controls.minAzimuthAngle = 80 * Math.PI / 180; // radians
-        //controls.maxAzimuthAngle =  -230 * Math.PI / 180; // radians
+        // controls.maxAzimuthAngle =  -230 * Math.PI / 180; // radians
         controls.target = new THREE.Vector3(0, 0, 0);
 
         this.houseInit();
@@ -150,7 +149,7 @@ export default class HemisphereLight {
 
     private houseInit() {
 
-        let matArray: any[] = new Array<any>();
+        const matArray: any[] = new Array<any>();
         // 右 左
         matArray.push(new THREE.MeshBasicMaterial({color: 0xCD6839})); // 右
         matArray.push(new THREE.MeshBasicMaterial({color: 0xCD6839})); // 左
@@ -160,7 +159,7 @@ export default class HemisphereLight {
         matArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
 
 
-        let middleArray: any[] = new Array<any>();
+        const middleArray: any[] = new Array<any>();
         // 右 左
         middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF})); // 右
         middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF})); // 左
@@ -170,14 +169,15 @@ export default class HemisphereLight {
         middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
 
 
-        //左面墙
+        // 左面墙
         this.WallGenerate(20, 500, 1800, -(this.modelX + 100), -300, -1100, matArray);
         this.WallGenerate(20, 500, 2000, -(this.modelX - 900), -300, -2000, middleArray, 0.5);
         this.WallGenerate(20, 500, 1800, -(this.modelX - 1900), -300, -1100, matArray);
 
     }
 
-    private WallGenerate(width: number, height: number, depth: number, x: number, y: number, z: number, matArray: any[], rotation: number = 0) {
+    private WallGenerate(width: number, height: number, depth: number, x: number, y: number, z: number,
+                         matArray: any[], rotation: number = 0) {
         const geometry = new THREE.BoxGeometry(width, height, depth);
 
 
@@ -197,13 +197,12 @@ export default class HemisphereLight {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-    };
+    }
 
     private animate = () => {
         requestAnimationFrame(this.animate);
         this.render();
-
-    };
+    }
 
     private render = () => {
         const delta = this.clock.getDelta();
@@ -229,9 +228,7 @@ export default class HemisphereLight {
         }
         this.renderer.render(this.scene, this.camera);
         this.stats.update();
-    };
-
-
+    }
 }
 
 
