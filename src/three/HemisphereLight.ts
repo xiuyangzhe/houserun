@@ -4,9 +4,14 @@ import OrbitControls from 'three-orbitcontrols';
 /// <refrence path="plugin/stats.d.ts">;
 /// <refrence path="plugin/Types.d.ts">;
 
+interface RunModel {
+    mixer: any;
+    model: any;
+}
+
 export default class HemisphereLight {
 
-    private fov: number = 45;
+    private fov: number = 100;
     private aspect: number = window.innerWidth / window.innerHeight;
     private near: number = 1;
     private far: number = 5000;
@@ -17,12 +22,10 @@ export default class HemisphereLight {
     private element: any;
     private hemiLight: any;
     private clock: any;
-    private mixers: any[];
-    private mixer: any;
-    private model: any;
+    private models: RunModel[];
 
     constructor(element: any) {
-        this.mixers = new Array<any>();
+        this.models = new Array<RunModel>();
         this.element = element;
         this.Init(this.fov, this.aspect, this.near, this.far);
 
@@ -30,7 +33,7 @@ export default class HemisphereLight {
         this.animate();
     }
 
-    public LoadModel(url: string) {
+    public LoadModel(url: string, x: number) {
         // model
 
         const geometry = new THREE.BoxGeometry(10, 10, 1);
@@ -41,10 +44,15 @@ export default class HemisphereLight {
 
         const loader = new FBXLoader();
         loader.load(url, (object) => {
-            this.model = object;
             object.position.z -= 400;
-            this.mixer = new THREE.AnimationMixer(object);
-            const action = this.mixer.clipAction(object.animations[0]);
+            object.position.x += x;
+            const mixer = new THREE.AnimationMixer(object);
+
+            const model: RunModel = { model: object, mixer} as RunModel;
+
+            this.models.push(model);
+
+            const action = mixer.clipAction(object.animations[0]);
             action.play();
             object.traverse((child) => {
                 if (child.isMesh) {
@@ -57,11 +65,14 @@ export default class HemisphereLight {
     }
 
     private Init(fov: number, aspect: number, near: number, far: number) {
+
+        // 正投影相机THREE.OrthographicCamera（远近比例相同）和透视投影相机THREE.PerspectiveCamera(远处小近处大)
+        // 透视角度越大物体越小
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        this.camera.position.set(100, 200, 300);
+        this.camera.position.set(100, 200, 500);
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color().setHSL(0.6, 0, 1);
-        this.scene.fog = new THREE.Fog(this.scene.background, 1, 5000);
+        this.scene.fog = new THREE.Fog(this.scene.background, this.near, this.far);
 
         // LIGHTS
         this.hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
@@ -118,16 +129,18 @@ export default class HemisphereLight {
 
     private render = () => {
         const delta = this.clock.getDelta();
-        if (this.mixer) {
-            this.mixer.update(delta);
+
+        if (this.models) {
+            for (const model of this.models) {
+                model.mixer.update(delta);
+                model.model.position.z += 1;
+            }
         }
         this.renderer.render(this.scene, this.camera);
         this.stats.update();
-
-        if (this.model != null) {
-            this.model.position.x += 1;
-        }
     }
 
 
 }
+
+
