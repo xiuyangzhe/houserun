@@ -21,6 +21,8 @@
     "@vue/cli-service": "^3.5.0",
     "lint-staged": "^8.1.0",
     "stats-js": "^1.0.0",
+    "tern": "^0.23.0",
+    "three-gltf-loader": "^1.103.0",
     "three-orbitcontrols": "^2.102.1",
     "typescript": "^3.2.1",
     "typings": "^2.1.1",

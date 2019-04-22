@@ -1,8 +1,11 @@
+/// <refrence path="plugin/Types.d.ts">;
+
 import * as THREE from 'three';
 import FBXLoader from 'three-fbxloader-offical';
+import GLTFLoader from 'three-gltf-loader';
+import ColladaLoader from '../plugin/Loaders/ColladaLoader';
 import OrbitControls from 'three-orbitcontrols';
-/// <refrence path="plugin/stats.d.ts">;
-/// <refrence path="plugin/Types.d.ts">;
+import enumerate = Reflect.enumerate;
 
 interface RunModel {
     mixer: any;
@@ -19,7 +22,7 @@ export enum MoveType {
 
 export default class HemisphereLight {
 
-    private fov: number = 45;
+    private fov: number = 90;
     private aspect: number = window.innerWidth / window.innerHeight;
     private near: number = 1;
     private far: number = 5000;
@@ -34,6 +37,10 @@ export default class HemisphereLight {
     private modelX: number = 1000;
     private groundY: number = -500;
 
+    // private personPre: any;
+    // private personChild: any;
+    // private mixers: any;
+
     constructor(element: any) {
         this.models = new Array<RunModel>();
         this.element = element;
@@ -43,7 +50,57 @@ export default class HemisphereLight {
         this.animate();
     }
 
-    public LoadModel(url: string, location: number, rotation: number = 0, moveType: MoveType = MoveType.X) {
+    public LoadModelFBXMulti(url: string, location: number, rotation: number = 0, moveType: MoveType = MoveType.X, count: number) {
+        // model
+        const loader = new FBXLoader();
+
+        loader.load(url, (object) => {
+
+            const personChild = object.children[1];
+            if (moveType === MoveType.Z) {
+                object.position.z -= 1600;
+                object.position.x = location;
+            } else {
+                object.position.z -= 400 + location;
+            }
+            object.rotation.y += rotation * Math.PI;
+            object.position.x -= this.modelX;
+            object.position.y = this.groundY;
+
+            const mixer = new THREE.AnimationMixer(object);
+
+            const model: RunModel = {model: object, mixer, moveType} as RunModel;
+
+            this.models.push(model);
+
+            const action = mixer.clipAction(object.animations[0]);
+            action.play();
+            object.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            this.scene.add(object);
+
+
+            for (let i = 1; i < count; i++) {
+
+                const newobj = JSON.parse(JSON.stringify(object));
+                if (moveType === MoveType.Z) {
+                    newobj.position.x = location * i;
+                } else {
+                    newobj.position.z -= 400 + location * i;
+                }
+                this.scene.add(newobj);
+            }
+
+        });
+
+
+    }
+
+    public LoadModelFBX(url: string, location: number, rotation: number = 0, moveType: MoveType = MoveType.X) {
         // model
         const loader = new FBXLoader();
         loader.load(url, (object) => {
@@ -53,8 +110,6 @@ export default class HemisphereLight {
             } else {
                 object.position.z -= 400 + location;
             }
-
-
             object.rotation.y += rotation * Math.PI;
             object.position.x -= this.modelX;
             object.position.y = this.groundY;
@@ -76,6 +131,135 @@ export default class HemisphereLight {
         });
     }
 
+    public LoadModelDEA(url: string, location: number, rotation: number = 0, moveType: MoveType = MoveType.X) {
+        // model
+        const loader = new ColladaLoader();
+        loader.load(url, (deaobj) => {
+            const object = deaobj.scene;
+            const animations = deaobj.animations;
+            const mixer = new THREE.AnimationMixer(object);
+            const action = mixer.clipAction(animations[0]).play();
+            if (moveType === MoveType.Z) {
+                object.position.z -= 1600;
+                object.position.x = location;
+            } else {
+                object.position.z -= 400 + location;
+            }
+
+            object.rotation.y += rotation * Math.PI;
+            object.position.x -= this.modelX;
+            object.position.y = this.groundY;
+
+            deaobj.scene.traverse((child) => {
+                if (child.isSkinnedMesh) {
+                    child.frustumCulled = false;
+                }
+            });
+            const model: RunModel = {model: deaobj.scene, mixer, moveType} as RunModel;
+            this.models.push(model);
+
+            this.scene.add(object);
+        });
+    }
+
+    public LoadModelGltf(url: string, location: number, rotation: number = 0, moveType: MoveType = MoveType.X, count: number, actionname: string, meshName: string) {
+        // model
+        const loader = new GLTFLoader();
+        loader.load(
+            url,
+            (gltf) => {
+                // called when the resource is loaded
+
+                for (let i = 0; i < count; i++) {
+                    const object = SkeletonUtils.clone(gltf.scene);
+
+                    if (moveType === MoveType.Z) {
+                        object.position.z -= 1600;
+                        object.position.x = location * i;
+                    } else {
+                        object.position.z -= 100 + location * i;
+                    }
+                    object.rotation.y += rotation * Math.PI;
+                    object.position.x -= this.modelX;
+                    object.position.y = this.groundY;
+                    object.scale.set(100, 100, 100);
+
+                    if (object) {
+                        const clonedMesh = object .getObjectByName(meshName);
+                        const mixer = this.startAnimation(clonedMesh, gltf.animations, actionname);
+                        if (mixer) {
+                            const model: RunModel = {model: object, mixer, moveType} as RunModel;
+                            // Save the animation mixer in the list, will need it in the animation loop
+                            this.models.push(model);
+                        }
+                    }
+                    this.scene.add(object);
+                }
+            },
+            (xhr) => {
+                // called while loading is progressing
+                console.log(`${(xhr.loaded / xhr.total * 100)}% loaded`);
+            },
+            (error) => {
+                // called when loading has errors
+                console.error('An error happened', error);
+            },
+        );
+
+        // loader.load(url, (object) => {
+        //     if (moveType === MoveType.Z) {
+        //         object.position.z -= 1600;
+        //         object.position.x = location;
+        //     } else {
+        //         object.position.z -= 400 + location;
+        //     }
+        //
+        //
+        //     object.rotation.y += rotation * Math.PI;
+        //     object.position.x -= this.modelX;
+        //     object.position.y = this.groundY;
+        //     const mixer = new THREE.AnimationMixer(object);
+        //
+        //     const model: RunModel = {model: object, mixer, moveType} as RunModel;
+        //
+        //     this.models.push(model);
+        //
+        //
+        //
+        //     var material = new THREE.MeshLambertMaterial({color:0xCD6839});
+        //     object.traverse((child) => {
+        //         child.geometry  = new THREE.Geometry();
+        //         if (child.isMesh) {
+        //             child.material = material;
+        //             child.castShadow = true;
+        //             child.receiveShadow = true;
+        //         }
+        //     });
+        //
+        //     const action = mixer.clipAction(object.animations[0]);
+        //     action.play();
+        //
+        //     this.scene.add(object);
+        // });
+    }
+
+    /**
+     * Start animation for a specific mesh object. Find the animation by name in the 3D model's animation array
+     * @param skinnedMesh {THREE.SkinnedMesh} The mesh to animate
+     * @param animations {Array} Array containing all the animations for this model
+     * @param animationName {string} Name of the animation to launch
+     * @return {THREE.AnimationMixer} Mixer to be used in the render loop
+     */
+    private startAnimation(skinnedMesh, animations, animationName) {
+        const mixer = new THREE.AnimationMixer(skinnedMesh);
+        const clip = THREE.AnimationClip.findByName(animations, animationName);
+        if (clip) {
+            const action = mixer.clipAction(clip);
+            action.play();
+        }
+        return mixer;
+    }
+
     private Init(fov: number, aspect: number, near: number, far: number) {
 
         // 正投影相机THREE.OrthographicCamera（远近比例相同）和透视投影相机THREE.PerspectiveCamera(远处小近处大)
@@ -88,14 +272,14 @@ export default class HemisphereLight {
         this.camera.lookAt({x: 0, y: 0, z: 0});
 
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color().setHSL(0.6, 0, 1);
+        this.scene.background = new THREE.Color(0xF0F8FF);
         this.scene.fog = new THREE.Fog(this.scene.background, this.near, this.far);
 
         // LIGHTS
-        this.hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
+        this.hemiLight = new THREE.HemisphereLight(0x00BFFF, 0xffffff, 0.6);
         this.hemiLight.color.setHSL(0.6, 1, 0.6);
-        this.hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-        this.hemiLight.position.set(0, 50, 0);
+        // this.hemiLight.groundColor.setHSL(0.095, 1, 0.75);
+        this.hemiLight.position.set(0, -50, -10000);
         this.scene.add(this.hemiLight);
 
 
@@ -143,6 +327,13 @@ export default class HemisphereLight {
         // controls.minAzimuthAngle = 80 * Math.PI / 180; // radians
         // controls.maxAzimuthAngle =  -230 * Math.PI / 180; // radians
         controls.target = new THREE.Vector3(0, 0, 0);
+        controls.enablePan = true;
+
+        // window.addEventListener('mousewheel', this.onMouseWheel,false);
+        // window.addEventListener('mousewheel', (e) => {
+        // }, {passive: false});
+        // window.addEventListener('wheel', (e) => {
+        // }, {passive: false});
 
         this.houseInit();
     }
@@ -170,9 +361,9 @@ export default class HemisphereLight {
 
 
         // 左面墙
-        this.WallGenerate(20, 500, 1800, -(this.modelX + 100), -300, -1100, matArray);
-        this.WallGenerate(20, 500, 2000, -(this.modelX - 900), -300, -2000, middleArray, 0.5);
-        this.WallGenerate(20, 500, 1800, -(this.modelX - 1900), -300, -1100, matArray);
+        this.WallGenerate(20, 500, 3800, -(this.modelX + 100), -300, -1100, matArray);
+        this.WallGenerate(20, 500, 2000, -(this.modelX - 900), -300, -3000, middleArray, 0.5);
+        this.WallGenerate(20, 500, 3800, -(this.modelX - 1900), -300, -1100, matArray);
 
     }
 
