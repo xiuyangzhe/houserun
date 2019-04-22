@@ -2,8 +2,10 @@
 
 ## Project setup
 ```
-npm install
+npm install -g @vue/cli
 npm install -g typings
+npm install
+
 ```
 
 ### Compiles and hot-reloads for development
