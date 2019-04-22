@@ -22,10 +22,10 @@ export enum MoveType {
 
 export default class HemisphereLight {
 
-    private fov: number = 90;
+    private fov: number = 100;
     private aspect: number = window.innerWidth / window.innerHeight;
     private near: number = 1;
-    private far: number = 5000;
+    private far: number = 100000;
     private camera: any;
     private scene: any;
     private renderer: any;
@@ -34,9 +34,9 @@ export default class HemisphereLight {
     private hemiLight: any;
     private clock: any;
     private readonly models: RunModel[];
-    private modelX: number = 1000;
+    private modelX: number = 2000;
     private groundY: number = -500;
-
+    private modelZ: number = 10000;
     // private personPre: any;
     // private personChild: any;
     // private mixers: any;
@@ -174,14 +174,15 @@ export default class HemisphereLight {
                     const object = SkeletonUtils.clone(gltf.scene);
 
                     if (moveType === MoveType.Z) {
-                        object.position.z -= 1600;
+                        object.position.z -= this.modelZ;
                         object.position.x = location * i;
                     } else {
-                        object.position.z -= 100 + location * i;
+                        object.position.z -= location * i;
                     }
+                    object.position.z += this.modelZ;
                     object.rotation.y += rotation * Math.PI;
-                    object.position.x -= this.modelX;
                     object.position.y = this.groundY;
+                    object.position.x -= this.modelX;
                     object.scale.set(100, 100, 100);
 
                     if (object) {
@@ -267,28 +268,29 @@ export default class HemisphereLight {
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
         // this.camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2,
         // window.innerHeight / 2, window.innerHeight / - 2, near, far )
-        this.camera.position.set(60, 500, 1000);
+        this.camera.position.set(0, 1000, this.modelZ + 1500);
 
         this.camera.lookAt({x: 0, y: 0, z: 0});
 
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xF0F8FF);
-        this.scene.fog = new THREE.Fog(this.scene.background, this.near, this.far);
+        this.scene.background = new THREE.Color(0x00BFFF);
+        // this.scene.fog = new THREE.Fog(this.scene.background, this.near, this.far);
 
         // LIGHTS
         this.hemiLight = new THREE.HemisphereLight(0x00BFFF, 0xffffff, 0.6);
         this.hemiLight.color.setHSL(0.6, 1, 0.6);
         // this.hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-        this.hemiLight.position.set(0, -50, -10000);
+        this.hemiLight.position.set(0, -50, -this.modelZ);
         this.scene.add(this.hemiLight);
 
 
         // GROUND
-        const groundGeo = new THREE.PlaneBufferGeometry(10000, 10000);
+        const groundGeo = new THREE.PlaneBufferGeometry(this.modelZ * 10, 100000);
         const groundMat = new THREE.MeshLambertMaterial({color: 0xffffff});
         groundMat.color.setHSL(0.095, 1, 0.75);
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.position.y = this.groundY;
+        ground.position.z -= 0;
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         this.scene.add(ground);
@@ -361,9 +363,9 @@ export default class HemisphereLight {
 
 
         // 左面墙
-        this.WallGenerate(20, 500, 3800, -(this.modelX + 100), -300, -1100, matArray);
-        this.WallGenerate(20, 500, 2000, -(this.modelX - 900), -300, -3000, middleArray, 0.5);
-        this.WallGenerate(20, 500, 3800, -(this.modelX - 1900), -300, -1100, matArray);
+        this.WallGenerate(20, 2000, this.modelZ * 2, - this.modelX, -300, 0, matArray);
+        this.WallGenerate(20, 2000, 2 * this.modelX, 0, -300, -this.modelZ, middleArray, 0.5);
+        this.WallGenerate(20, 2000, this.modelZ * 2, this.modelX  , -300, 0, matArray);
 
     }
 
