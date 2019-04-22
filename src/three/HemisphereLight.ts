@@ -25,7 +25,7 @@ export default class HemisphereLight {
     private fov: number = 100;
     private aspect: number = window.innerWidth / window.innerHeight;
     private near: number = 1;
-    private far: number = 100000;
+    private far: number = 22000;
     private camera: any;
     private scene: any;
     private renderer: any;
