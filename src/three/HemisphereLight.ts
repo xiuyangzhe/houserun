@@ -8,16 +8,25 @@ import OrbitControls from 'three-orbitcontrols';
 import enumerate = Reflect.enumerate;
 
 interface RunModel {
+    startRotation: number;
     mixer: any;
     model: any;
     moveType: MoveType;
+    runData: Array<THREE.Vector3>;
+}
 
+interface RunData {
+    Enable: boolean;
+    RunModels: Array<RunModel>;
 }
 
 export enum MoveType {
     X,
     Y,
     Z,
+    XY,
+    YZ,
+    XZ
 }
 
 export default class HemisphereLight {
@@ -34,15 +43,18 @@ export default class HemisphereLight {
     private hemiLight: any;
     private clock: any;
     private readonly models: RunModel[];
-    private modelX: number = 2000;
-    private groundY: number = -500;
-    private modelZ: number = 10000;
+    private runData: RunData;
+    public modelX: number = 5000;
+    public groundY: number = -500;
+    private modelZ: number = 5000;
+    private runTime: number = 0;
     // private personPre: any;
     // private personChild: any;
     // private mixers: any;
 
     constructor(element: any) {
         this.models = new Array<RunModel>();
+        this.runData = {Enable: false, RunModels: this.models} as RunData;
         this.element = element;
         this.Init(this.fov, this.aspect, this.near, this.far);
 
@@ -131,34 +143,36 @@ export default class HemisphereLight {
         });
     }
 
-    public LoadModelDEA(url: string, location: number, rotation: number = 0, moveType: MoveType = MoveType.X) {
+    public LoadModelDEA(url: string, location: number, rotation: number = 0, moveType: MoveType = MoveType.X, count: number, actionname: string, meshName: string) {
         // model
         const loader = new ColladaLoader();
         loader.load(url, (deaobj) => {
-            const object = deaobj.scene;
-            const animations = deaobj.animations;
-            const mixer = new THREE.AnimationMixer(object);
-            const action = mixer.clipAction(animations[0]).play();
-            if (moveType === MoveType.Z) {
-                object.position.z -= 1600;
-                object.position.x = location;
-            } else {
-                object.position.z -= 400 + location;
-            }
+            for (let i = 0; i < count; i++) {
+                const object = SkeletonUtils.clone(deaobj.scene);
 
-            object.rotation.y += rotation * Math.PI;
-            object.position.x -= this.modelX;
-            object.position.y = this.groundY;
-
-            deaobj.scene.traverse((child) => {
-                if (child.isSkinnedMesh) {
-                    child.frustumCulled = false;
+                if (moveType === MoveType.Z) {
+                    object.position.z -= this.modelZ;
+                    object.position.x = location * i;
+                } else {
+                    object.position.z -= location * i;
                 }
-            });
-            const model: RunModel = {model: deaobj.scene, mixer, moveType} as RunModel;
-            this.models.push(model);
+                object.position.z += this.modelZ;
+                object.rotation.y += rotation * Math.PI;
+                object.position.y = this.groundY;
+                object.position.x -= this.modelX;
+                object.scale.set(2, 2, 2);
 
-            this.scene.add(object);
+                if (object) {
+                    const clonedMesh = object.getObjectByName(meshName);
+                    const mixer = this.startAnimation(clonedMesh, deaobj.animations, actionname);
+                    if (mixer) {
+                        const model: RunModel = {model: object, mixer, moveType} as RunModel;
+                        // Save the animation mixer in the list, will need it in the animation loop
+                        this.models.push(model);
+                    }
+                }
+                this.scene.add(object);
+            }
         });
     }
 
@@ -172,21 +186,10 @@ export default class HemisphereLight {
 
                 for (let i = 0; i < count; i++) {
                     const object = SkeletonUtils.clone(gltf.scene);
-
-                    if (moveType === MoveType.Z) {
-                        object.position.z -= this.modelZ;
-                        object.position.x = location * i;
-                    } else {
-                        object.position.z -= location * i;
-                    }
-                    object.position.z += this.modelZ;
-                    object.rotation.y += rotation * Math.PI;
-                    object.position.y = this.groundY;
-                    object.position.x -= this.modelX;
                     object.scale.set(100, 100, 100);
 
                     if (object) {
-                        const clonedMesh = object .getObjectByName(meshName);
+                        const clonedMesh = object.getObjectByName(meshName);
                         const mixer = this.startAnimation(clonedMesh, gltf.animations, actionname);
                         if (mixer) {
                             const model: RunModel = {model: object, mixer, moveType} as RunModel;
@@ -196,6 +199,8 @@ export default class HemisphereLight {
                     }
                     this.scene.add(object);
                 }
+
+                this.RunDataRound(new THREE.Vector3(0, this.groundY, 0));
             },
             (xhr) => {
                 // called while loading is progressing
@@ -244,6 +249,32 @@ export default class HemisphereLight {
         // });
     }
 
+    public RunDataRound(startLocation: THREE.Vector3) {
+        if (this.models) {
+            const angle = 360 / this.models.length;
+            let i = 0;
+            for (const model of this.models) {
+                model.model.position.x = startLocation.x;
+                model.model.position.y = startLocation.y;
+                model.model.position.z = startLocation.z;
+
+                const currentangle = angle * i++;
+                model.model.rotation.y = 1 * Math.PI + currentangle * Math.PI / 180;
+
+                model.runData = new Array<THREE.Vector3>();
+                for (let index = 0; index < 1000; index++) {
+                    const r = 2 * Math.PI / 360 * angle * i;//弧度
+                    const x = Math.sin(r) * index * 0.01;
+                    const z = Math.cos(r) * index * 0.01;
+                    model.runData.push(new THREE.Vector3(x, 0, z));
+
+                }
+            }
+
+            this.runData.Enable = true;
+        }
+    }
+
     /**
      * Start animation for a specific mesh object. Find the animation by name in the 3D model's animation array
      * @param skinnedMesh {THREE.SkinnedMesh} The mesh to animate
@@ -268,7 +299,7 @@ export default class HemisphereLight {
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
         // this.camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2,
         // window.innerHeight / 2, window.innerHeight / - 2, near, far )
-        this.camera.position.set(0, 1000, this.modelZ + 1500);
+        this.camera.position.set(0, 1000, this.modelZ + 3000);
 
         this.camera.lookAt({x: 0, y: 0, z: 0});
 
@@ -296,7 +327,15 @@ export default class HemisphereLight {
         this.scene.add(ground);
 
         // Render
-        this.renderer = new THREE.WebGLRenderer({antialias: true});
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true, // true/false表示是否开启反锯齿
+            alpha: true, // true/false 表示是否可以设置背景色透明
+            precision: 'lowp', // highp/mediump/lowp 表示着色精度选择
+            premultipliedAlpha: false, // true/false 表示是否可以设置像素深度（用来度量图像的分辨率）
+            preserveDrawingBuffer: true, // true/false 表示是否保存绘图缓冲
+            stencil: false, // false/true 表示是否使用模板字体或图案
+            powerPreference: 'high-performance'
+        });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.gammaInput = true;
@@ -338,6 +377,8 @@ export default class HemisphereLight {
         // }, {passive: false});
 
         this.houseInit();
+
+        this.renderer.render(this.scene, this.camera);
     }
 
     private houseInit() {
@@ -356,22 +397,40 @@ export default class HemisphereLight {
         // 右 左
         middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF})); // 右
         middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF})); // 左
-        middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
-        middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
+        middleArray.push(new THREE.MeshBasicMaterial({color: 0xCD6839})); //上
+        middleArray.push(new THREE.MeshBasicMaterial({color: 0xEEB422})); //下
         middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
         middleArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
 
+        const floorArray: any[] = new Array<any>();
+        // 右 左
+        floorArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF})); // 右
+        floorArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF})); // 左
+        floorArray.push(new THREE.MeshBasicMaterial({color: 0xCD6839, transparent: true, opacity: 0.5})); //上
+        floorArray.push(new THREE.MeshBasicMaterial({color: 0x8B7355})); //下
+        floorArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
+        floorArray.push(new THREE.MeshBasicMaterial({color: 0xCDC5BF}));
 
-        // 左面墙
-        this.WallGenerate(20, 2000, this.modelZ * 2, - this.modelX, -300, 0, matArray);
-        this.WallGenerate(20, 2000, 2 * this.modelX, 0, -300, -this.modelZ, middleArray, 0.5);
-        this.WallGenerate(20, 2000, this.modelZ * 2, this.modelX  , -300, 0, matArray);
+
+        // 四面墙
+        this.WallGenerate(20, 2000, 2 * this.modelZ, 0, -300, this.modelZ, middleArray, 0.5);
+        this.WallGenerate(20, 2000, this.modelZ * 2, -this.modelX, -300, 0, matArray);
+        this.WallGenerate(20, 2000, 2 * this.modelZ, 0, -300, -this.modelZ, middleArray, 0.5);
+        this.WallGenerate(20, 2000, this.modelZ * 2, this.modelX, -300, 0, matArray);
+
+        // 二楼
+        this.WallGenerate(this.modelZ * 2, 20, this.modelZ * 2, 0, 700, 0, floorArray);
+
+        this.WallGenerate(20, 2000, 2 * this.modelZ, 0, -300, this.modelZ, middleArray, 0.5);
+        this.WallGenerate(20, 2000, this.modelZ * 2, -this.modelX, -300, 0, matArray);
+        this.WallGenerate(20, 2000, 2 * this.modelZ, 0, -300, -this.modelZ, middleArray, 0.5);
+        this.WallGenerate(20, 2000, this.modelZ * 2, this.modelX, -300, 0, matArray);
 
     }
 
     private WallGenerate(width: number, height: number, depth: number, x: number, y: number, z: number,
-                         matArray: any[], rotation: number = 0) {
-        const geometry = new THREE.BoxGeometry(width, height, depth);
+                         matArray: any, rotation: number = 0) {
+        const geometry = new THREE.BoxBufferGeometry(width, height, depth);
 
 
         // const material = new THREE.MeshBasicMaterial({color: 0xC5C1AA});
@@ -390,38 +449,31 @@ export default class HemisphereLight {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
+    };
 
     private animate = () => {
         requestAnimationFrame(this.animate);
         this.render();
-    }
+    };
 
     private render = () => {
         const delta = this.clock.getDelta();
-
-        if (this.models) {
-            for (const model of this.models) {
-                model.mixer.update(delta);
-
-                switch (model.moveType) {
-                    case MoveType.X:
-                        model.model.position.x += 1;
-                        break;
-                    case MoveType.Y:
-                        model.model.position.y += 1;
-                        break;
-                    case MoveType.Z:
-                        model.model.position.z += 1;
-                        break;
+        if (this.runTime < 1000) {
+            if (this.runData.Enable) {
+                for (const model of this.models) {
+                    model.mixer.update(delta);
+                    if (model.runData.length > 0) {
+                        model.model.position.x += model.runData[this.runTime].x;
+                        model.model.position.y += model.runData[this.runTime].y;
+                        model.model.position.z += model.runData[this.runTime].z;
+                    }
                 }
-
-
             }
+            this.runTime++;
         }
         this.renderer.render(this.scene, this.camera);
         this.stats.update();
-    }
+    };
 }
 
 
