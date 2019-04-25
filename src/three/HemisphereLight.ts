@@ -34,7 +34,7 @@ export default class HemisphereLight {
     private fov: number = 100;
     private aspect: number = window.innerWidth / window.innerHeight;
     private near: number = 1;
-    private far: number = 22000;
+    private far: number = 300000;
     private camera: any;
     private scene: any;
     private renderer: any;
@@ -45,7 +45,7 @@ export default class HemisphereLight {
     private readonly models: RunModel[];
     private runData: RunData;
     public modelX: number = 5000;
-    public groundY: number = -500;
+    public groundY: number = -1000;
     private modelZ: number = 5000;
     private runTime: number = 0;
     // private personPre: any;
@@ -299,12 +299,12 @@ export default class HemisphereLight {
         this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
         // this.camera = new THREE.OrthographicCamera( window.innerWidth / - 2, window.innerWidth / 2,
         // window.innerHeight / 2, window.innerHeight / - 2, near, far )
-        this.camera.position.set(0, 1000, this.modelZ + 3000);
+        this.camera.position.set(0, 5000, this.modelZ + 10000);
 
         this.camera.lookAt({x: 0, y: 0, z: 0});
 
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x00BFFF);
+        // this.scene.background = new THREE.Color(0x00BFFF);
         // this.scene.fog = new THREE.Fog(this.scene.background, this.near, this.far);
 
         // LIGHTS
@@ -314,17 +314,8 @@ export default class HemisphereLight {
         this.hemiLight.position.set(0, -50, -this.modelZ);
         this.scene.add(this.hemiLight);
 
+        this.addGround();
 
-        // GROUND
-        const groundGeo = new THREE.PlaneBufferGeometry(this.modelZ * 10, 100000);
-        const groundMat = new THREE.MeshLambertMaterial({color: 0xffffff});
-        groundMat.color.setHSL(0.095, 1, 0.75);
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.position.y = this.groundY;
-        ground.position.z -= 0;
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        this.scene.add(ground);
 
         // Render
         this.renderer = new THREE.WebGLRenderer({
@@ -360,7 +351,6 @@ export default class HemisphereLight {
         const controls = new OrbitControls(this.camera);
 
         controls.damping = 0.2;
-        controls.maxPolarAngle = Math.PI / 2;
         controls.minPolarAngle = 1;
         controls.minDistance = near;
         controls.maxDistance = far;
@@ -377,7 +367,7 @@ export default class HemisphereLight {
         // }, {passive: false});
 
         this.houseInit();
-
+        this.AddSky();
         this.renderer.render(this.scene, this.camera);
     }
 
@@ -428,6 +418,32 @@ export default class HemisphereLight {
 
     }
 
+    private AddSky(){
+        // Add Sky
+        // const sky = new THREE.BoxBufferGeometry(1,1,1);
+        // sky.scale(30000,30000,30000);
+
+        const path = "../sky/mp_5dim/";
+        const files = ["5dim_ft.jpg" ,"5dim_bk.jpg","5dim_up.jpg","5dim_dn.jpg" ,"5dim_rt.jpg" ,"5dim_lf.jpg"];//左 右 上 下 后 前
+
+        this.scene.background = new THREE.CubeTextureLoader()
+            .setPath(path).load(
+                files
+            );
+    }
+
+    private addGround(){
+        // GROUND
+        const groundGeo = new THREE.PlaneBufferGeometry(this.modelZ * 2+1000, 1000+this.modelZ *2);
+        const groundMat = new THREE.MeshLambertMaterial({color: 0xffffff});
+        groundMat.color.setHSL(0.095, 1, 0.75);
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.position.y = this.groundY;
+        ground.position.z -= 0;
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+    }
     private WallGenerate(width: number, height: number, depth: number, x: number, y: number, z: number,
                          matArray: any, rotation: number = 0) {
         const geometry = new THREE.BoxBufferGeometry(width, height, depth);
