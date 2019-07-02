@@ -1,3 +1,5 @@
+# please go to `https://gitee.com/rockyCode/hourserunning` to get the newest code,the github is too slow for me
+
 # houserun
 
 ## Project setup
