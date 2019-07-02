@@ -1,4 +1,4 @@
-please go to [newestcode](https://gitee.com/rockyCode/hourserunning) to get the newest code,the github is too slow for me
+please go to [newestcode git](https://gitee.com/rockyCode/hourserunning) to get the newest code,the github is too slow for me
 
 # houserun
 
